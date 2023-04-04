@@ -18,6 +18,12 @@ vbids_cols = [f'VBID{i}' for i in range(25)]
 csv_cols = common_cols + asks_cols + vasks_cols + bids_cols + vbids_cols
 
 
+async def to_csv(fname, data):
+    async with aiofiles.open(fname, mode="a+", encoding="utf-8") as afp:
+        writer = AsyncDictWriter(afp, data.keys(), restval="NULL")
+        await writer.writerow(data)
+
+
 async def save_book(book: OrderBook, ts):
     asks_d = book.book.asks.to_dict()
     bids_d = book.book.bids.to_dict()
@@ -34,12 +40,6 @@ async def save_book(book: OrderBook, ts):
     data.update(dict(zip(vasks_cols, vasks)))
     data.update(dict(zip(vbids_cols, vbids)))
     await to_csv('data/snapshots.csv', data)
-
-
-async def to_csv(fname, data):
-    async with aiofiles.open(fname, mode="a+", encoding="utf-8") as afp:
-        writer = AsyncDictWriter(afp, data.keys(), restval="NULL")
-        await writer.writerow(data)
 
 
 async def save_trade(trade, ts):
