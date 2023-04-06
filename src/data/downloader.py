@@ -7,6 +7,7 @@ from cryptofeed.defines import L2_BOOK, TRADES
 from cryptofeed.exchanges import Binance, Bybit, Huobi
 
 from cryptofeed.types import OrderBook
+from cryptofeed.raw_data_collection import AsyncFileCallback
 
 
 common_cols = ['exchange', 'symbol', 'ts']
@@ -61,13 +62,15 @@ def get_data():
     config = {'log': {'filename': 'demo.log',
                       'level': 'DEBUG', 'disabled': False}}
     Path('data').mkdir(exist_ok=True)
-    f = FeedHandler(config=config)
+    f = FeedHandler(
+        config=config, raw_data_collection=AsyncFileCallback('./data'))
     f.add_feed(
         Binance(symbols=['BTC-USDT', 'ETH-USDT', 'EOS-USDT', 'LINK-USDT',
                          'BNB-USDT'],
                 max_depth=25,
                 channels=[L2_BOOK, TRADES],
-                callbacks={L2_BOOK: save_book, TRADES: save_trade})
+                # callbacks={L2_BOOK: save_book, TRADES: save_trade})
+                )
     )
 
     f.add_feed(
@@ -75,7 +78,8 @@ def get_data():
                        'LINK-USDT-PERP', 'BNB-USDT-PERP'],
               max_depth=25,
               channels=[L2_BOOK, TRADES],
-              callbacks={L2_BOOK: save_book, TRADES: save_trade})
+              #   callbacks={L2_BOOK: save_book, TRADES: save_trade}
+              )
     )
 
     f.add_feed(
@@ -83,7 +87,8 @@ def get_data():
                        'BNB-USDT'],
               max_depth=25,
               channels=[L2_BOOK, TRADES],
-              callbacks={L2_BOOK: save_book, TRADES: save_trade})
+              #   callbacks={L2_BOOK: save_book, TRADES: save_trade}
+              )
     )
 
     f.run()
