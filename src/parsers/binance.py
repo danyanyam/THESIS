@@ -1,24 +1,25 @@
 import json
 import datetime as dt
 from typing import List
+from decimal import Decimal
 
+from pydantic import BaseModel, validator, Field, condecimal
 from src.parsers.base import BaseUpdateMessage
-
-from pydantic import BaseModel, validator, Field, condecimal, root_validator
 
 
 class TradeData(BaseModel):
     event_type: str = Field(alias="e")
-    event_time: dt.datetime = Field(alias="E")
+    ts: dt.datetime = Field(alias="E")
     symbol: str = Field(alias="s")
     agg_trade_id: int = Field(alias="a")
-    price: float = Field(alias="p")
-    quantity: float = Field(alias="q")
+    price: Decimal = Field(alias="p")
+    quantity: Decimal = Field(alias="q")
     first_trade_id: int = Field(alias="f")
     last_trade_id: int = Field(alias="l")
     trade_time: dt.datetime = Field(alias="T")
     is_market_maker: bool = Field(alias="m")
     is_ignore: bool = Field(alias="M")
+    side: str = None
 
 
 class Trade(BaseModel):
