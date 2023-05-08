@@ -4,12 +4,12 @@ from decimal import Decimal
 from dataclasses import dataclass, field
 
 from src.parsers.binance import BinanceUpdateMessage
-from src.parsers.binance import Trade as BinanceTrade
-from src.parsers.binance import Depth as BinanceDepth
+from src.parsers.binance import BinanceTradeData
+from src.parsers.binance import BinanceDepthData
 
-from src.parsers.bybit import BybitUpdateMessage, DeltaData as BybitDeltaData
-from src.parsers.bybit import SnapshotData as BybitSnapshotData, OBLevel as BybitObLevel
-from src.parsers.bybit import Trade as BybitTrade
+from src.parsers.bybit import BybitUpdateMessage, BybitDeltaData
+from src.parsers.bybit import BybitSnapshotData, BybitOBLevel
+from src.parsers.bybit import BybitTradeData
 
 Update = BinanceUpdateMessage | BybitUpdateMessage
 
@@ -26,7 +26,7 @@ class Other:
 
 
 @dataclass
-class Trade:
+class GenericTrade:
     price: Decimal
     quantity: Decimal
     ts: dt.datetime
@@ -34,8 +34,8 @@ class Trade:
     side: Side
 
     @staticmethod
-    def from_update_message(update: Update) -> "Trade":
-        return Trade(
+    def from_update_message(update: Update) -> "GenericTrade":
+        return GenericTrade(
             price=update.payload.data.price,
             quantity=update.payload.data.quantity,
             ts=update.payload.data.ts,
@@ -53,7 +53,7 @@ class PriceLevel:
 
 
 @dataclass
-class Depth:
+class GenericDepth:
     ts: dt.datetime
     delete: list[PriceLevel] = field(default_factory=list)
     update: list[PriceLevel] = field(default_factory=list)
@@ -61,7 +61,7 @@ class Depth:
     construct: list[PriceLevel] = field(default_factory=list)
 
     @staticmethod
-    def from_update_message(update: Update) -> "Depth":
+    def from_update_message(update: Update) -> "GenericDepth":
         if isinstance(update, BinanceUpdateMessage):
 
             s = update.payload.data.symbol
@@ -75,7 +75,7 @@ class Depth:
                 for price, size in update.payload.data.bids
             ]
 
-            return Depth(
+            return GenericDepth(
                 ts=update.payload.data.event_time,
                 update=asks + bids
             )
@@ -83,18 +83,18 @@ class Depth:
         elif isinstance(update, BybitUpdateMessage):
 
             if isinstance(update.payload.data, BybitDeltaData):
-                inserts = Depth.convert_to_price_level(
+                inserts = GenericDepth.convert_to_price_level(
                     update.payload.data.insert
                 )
-                updates = Depth.convert_to_price_level(
+                updates = GenericDepth.convert_to_price_level(
                     update.payload.data.update
                 )
 
-                deletes = Depth.convert_to_price_level(
+                deletes = GenericDepth.convert_to_price_level(
                     update.payload.data.delete
                 )
 
-                return Depth(
+                return GenericDepth(
                     ts=update.payload.ts,
                     insert=inserts,
                     update=updates,
@@ -102,15 +102,15 @@ class Depth:
                 )
 
             elif isinstance(update.payload.data, BybitSnapshotData):
-                return Depth(
+                return GenericDepth(
                     ts=update.payload.ts,
-                    construct=Depth.convert_to_price_level(
+                    construct=GenericDepth.convert_to_price_level(
                         update.payload.data.order_book
                     )
                 )
 
     @staticmethod
-    def convert_to_price_level(source: list[BybitObLevel]) -> list[PriceLevel]:
+    def convert_to_price_level(source: list[BybitOBLevel]) -> list[PriceLevel]:
         return [
             PriceLevel(symbol=i.symbol, price=i.price,
                        quantity=i.size, side=Side(i.side))
@@ -119,11 +119,21 @@ class Depth:
 
 
 class Decoder:
-    def decode(self, update: Update) -> Trade | Depth | Other:
-        if isinstance(update.payload.data, (BinanceTrade, BybitTrade)):
-            return Trade.from_update_message(update)
 
-        if isinstance(update.payload.data, (BinanceDepth, BybitDeltaData)):
-            return Depth.from_update_message(update)
+    def is_trade(self, decoded: GenericTrade | GenericDepth):
+        return isinstance(decoded, GenericTrade)
+
+    def is_depth(self, decoded: GenericTrade | GenericDepth):
+        return isinstance(decoded, GenericDepth)
+
+    def decode(self, update: Update) -> GenericTrade | GenericDepth | Other:
+
+        if isinstance(update.payload.data, (BinanceTradeData,
+                                             BybitTradeData)):
+            return GenericTrade.from_update_message(update)
+
+        if isinstance(update.payload.data,
+                       (BinanceDepthData, BybitDeltaData, BybitSnapshotData)):
+            return GenericDepth.from_update_message(update)
 
         return Other()

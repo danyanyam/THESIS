@@ -1,13 +1,12 @@
-import json
 import datetime as dt
 from typing import List
 from decimal import Decimal
 
-from pydantic import BaseModel, validator, Field, condecimal
+from pydantic import BaseModel, validator, Field, root_validator
 from src.parsers.base import BaseUpdateMessage
 
 
-class TradeData(BaseModel):
+class BinanceTradeData(BaseModel):
     event_type: str = Field(alias="e")
     ts: dt.datetime = Field(alias="E")
     symbol: str = Field(alias="s")
@@ -22,9 +21,9 @@ class TradeData(BaseModel):
     side: str = None
 
 
-class Trade(BaseModel):
+class BinanceTrade(BaseModel):
     stream: str
-    data: TradeData
+    data: BinanceTradeData
 
     @validator("stream")
     def validate_stream(cls, v):
@@ -34,22 +33,27 @@ class Trade(BaseModel):
             raise ValueError(f"Invalid stream: {v}")
 
 
-class DepthData(BaseModel):
+class BinanceDepthData(BaseModel):
     event_type: str = Field(alias="e")
     event_time: dt.datetime = Field(alias="E")
     symbol: str = Field(alias="s")
     first_update_id: int = Field(alias="U")
     last_update_id: int = Field(alias="u")
-    bids: List[List[condecimal(decimal_places=8)]] = Field(alias="b")
-    asks: List[List[condecimal(decimal_places=8)]] = Field(alias="b")
+    bids: List[List[Decimal]] = Field(alias="b")
+    asks: List[List[Decimal]] = Field(alias="a")
+
+    @root_validator
+    def check_non_empty(cls, v):
+        assert any((len(v['bids']), len(v['asks'])))
+        return v
 
 
-class Depth(BaseModel):
+class BinanceDepth(BaseModel):
     stream: str
-    data: DepthData
+    data: BinanceDepthData
 
 
 class BinanceUpdateMessage(BaseUpdateMessage):
     raw: str
     ts: dt.datetime = None
-    payload: Trade | Depth = None
+    payload: BinanceTrade | BinanceDepth = None

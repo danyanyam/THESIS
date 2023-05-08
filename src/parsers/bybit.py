@@ -8,7 +8,7 @@ from src.parsers.base import BaseUpdateMessage
 TICK_DIRECTION_VALUES = Literal["PlusTick", "ZeroPlusTick", "MinusTick", "ZeroMinusTick"]
 
 
-class TradeData(BaseModel):
+class BybitTradeData(BaseModel):
     symbol: str = Field(alias="symbol")
     tick_direction: TICK_DIRECTION_VALUES = Field(alias="tick_direction")
     price: Decimal = Field(alias="price")
@@ -32,7 +32,7 @@ class TradeData(BaseModel):
         return v
 
 
-class Trade(BaseModel):
+class BybitTrade(BaseModel):
     """
     {"topic":"trade.LINKUSDT",
     "data":[{"symbol":"LINKUSDT","tick_direction":"ZeroMinusTick",
@@ -42,7 +42,7 @@ class Trade(BaseModel):
     "is_block_trade":"false"}]}
     """
     stream: str = Field(alias="topic")
-    data: list[TradeData]
+    data: list[BybitTradeData]
 
     @validator("stream")
     def validate_stream(cls, v):
@@ -52,7 +52,7 @@ class Trade(BaseModel):
             raise ValueError(f"Invalid TRADE stream: {v}")
 
 
-class TechnicalData(BaseModel):
+class BybitTechnicalData(BaseModel):
     """
     {"success":true,"ret_msg":"",
     "conn_id":"19746d61-7b54-4c17-8a56-81c0fe3dadbe",
@@ -70,7 +70,7 @@ class TechnicalData(BaseModel):
         return v
 
 
-class OBLevel(BaseModel):
+class BybitOBLevel(BaseModel):
     price: Decimal
     size: Decimal = -1  # in delete messages, this is not used
     id: int
@@ -78,19 +78,19 @@ class OBLevel(BaseModel):
     symbol: str
 
 
-class DeltaData(BaseModel):
-    delete: List[OBLevel] = []
-    update: List[OBLevel] = []
-    insert: List[OBLevel] = []
+class BybitDeltaData(BaseModel):
+    delete: List[BybitOBLevel] = []
+    update: List[BybitOBLevel] = []
+    insert: List[BybitOBLevel] = []
     bid1_id: int
     ask1_id: int
 
 
-class SnapshotData(BaseModel):
-    order_book: List[OBLevel]
+class BybitSnapshotData(BaseModel):
+    order_book: List[BybitOBLevel]
 
 
-class Depth(BaseModel):
+class BybitDepth(BaseModel):
     """
     {"topic":"orderBook_200.100ms.LINKUSDT","type":"delta",
     "data":{
@@ -104,7 +104,7 @@ class Depth(BaseModel):
     """
     stream: str = Field(alias="topic")
     type: Literal["delta", "snapshot"] = Field(alias="type")
-    data: DeltaData | SnapshotData = Field(alias="data")
+    data: BybitDeltaData | BybitSnapshotData = Field(alias="data")
     cross_seq: int = Field(alias="cross_seq")
     ts: dt.datetime = Field(alias="timestamp_e6")
 
@@ -119,4 +119,4 @@ class Depth(BaseModel):
 class BybitUpdateMessage(BaseUpdateMessage):
     raw: str
     ts: dt.datetime = None
-    payload: Trade | Depth | TechnicalData = None
+    payload: BybitTrade | BybitDepth | BybitTechnicalData = None
